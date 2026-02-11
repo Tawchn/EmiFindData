@@ -4,10 +4,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from PIL import Image
 
-# --- PAGE CONFIG ---
+# --- PAGE SETTINGS ---
 st.set_page_config(page_title="EmiFindData Web", layout="wide")
 
-# --- LOGO & SIDEBAR ---
+# --- CUSTOM CSS FOR THE NEON THEME ---
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stTabs [data-baseweb="tab-list"] { gap: 24px; }
+    .stTabs [data-baseweb="tab"] { height: 50px; white-space: pre-wrap; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- SIDEBAR LOGO & BRANDING ---
 try:
     logo = Image.open("IMG_8009.jpeg")
     st.sidebar.image(logo, use_container_width=True)
@@ -15,62 +24,33 @@ except:
     st.sidebar.title("EmiFindData")
 
 st.sidebar.write("### Created by Tawanda Mucheriwa")
+st.sidebar.divider()
 
-# --- DATA PROFILING LOGIC ---
-def get_profile(df):
+# --- ANALYSIS FUNCTIONS ---
+def get_data_profile(df):
+    """Industry standard column profiling."""
     stats = []
     for col in df.columns:
         nulls = df[col].isnull().sum()
         dtype = str(df[col].dtype)
-        is_unique = "✅" if df[col].is_unique else "❌"
-        stats.append({"Column": col, "Type": dtype, "Missing": nulls, "Unique": is_unique})
+        unique_val = df[col].nunique()
+        # Suggesting column status
+        status = "🔑 Potential Key" if (df[col].is_unique and nulls == 0) else "Data Field"
+        stats.append({
+            "Column": col, 
+            "Type": dtype, 
+            "Missing": nulls, 
+            "Unique Count": unique_val,
+            "Analysis": status
+        })
     return pd.DataFrame(stats)
 
-# --- WEB INTERFACE ---
-st.title("🔬 EmiFindData: Professional Profiler")
+# --- MAIN INTERFACE ---
+st.title("🔬 EmiFindData Web Profiler")
 
-uploaded_files = st.sidebar.file_uploader("Choose CSV or Excel files", accept_multiple_files=True)
+# Replaces your manual buttons with a professional file uploader
+uploaded_files = st.sidebar.file_uploader("Upload CSV or Excel", accept_multiple_files=True)
 
 if uploaded_files:
-    # Use a dropdown to select which file to analyze
-    filenames = [file.name for file in uploaded_files]
-    selected_file = st.selectbox("Select dataset to analyze", filenames)
-    
-    # Load the selected file
-    for file in uploaded_files:
-        if file.name == selected_file:
-            if file.name.endswith('.csv'):
-                df = pd.read_csv(file)
-            else:
-                df = pd.read_excel(file)
-            
-            # --- TABS ---
-            tab1, tab2, tab3 = st.tabs(["📊 Profile Report", "🗂️ Data Preview", "🔗 Correlation"])
-            
-            with tab1:
-                st.subheader("Data Health Report")
-                profile_df = get_profile(df)
-                st.dataframe(profile_df, use_container_width=True)
-                
-                # Content Discovery: Missing Values Chart
-                st.subheader("Missing Value Discovery")
-                fig, ax = plt.subplots()
-                df.isnull().sum().plot(kind='bar', ax=ax, color='magenta')
-                st.pyplot(fig)
-                            
-            with tab2:
-                st.subheader("Raw Data Preview")
-                st.write(df.head(100))
-                
-            with tab3:
-                st.subheader("Relationship Discovery")
-                # Only correlate numeric data
-                numeric_df = df.select_dtypes(include=['number'])
-                if not numeric_df.empty:
-                    fig, ax = plt.subplots()
-                    sns.heatmap(numeric_df.corr(), annot=True, cmap="mako", ax=ax)
-                    st.pyplot(fig)
-                                    else:
-                    st.write("No numeric data found for correlation.")
-else:
-    st.info("Please upload a file in the sidebar to begin profiling.")
+    # 1. Select the Dataset
+    filenames = [file.name for file in uploaded
